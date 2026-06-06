@@ -1356,9 +1356,11 @@ for m in t.findall('.//mntent'):
     fsname = (m.find('fsname').text or '').strip()
     mount = (m.find('dir').text or '').strip()
     fstype = (m.find('type').text or '').strip()
-    if fsname.startswith('/dev/disk/'):
-        try: fsname = os.path.realpath(fsname)
-        except: pass
+    try:
+        real = subprocess.check_output(['findmnt', '-n', '-o', 'SOURCE', '-T', mount], stderr=subprocess.DEVNULL).decode().strip()
+        if real and real != '/dev/root':
+            fsname = real
+    except: pass
     dev = fsname.rsplit('/', 1)[-1] if fsname else '?'
     size = used = avail = use_pct = '?'
     try:
