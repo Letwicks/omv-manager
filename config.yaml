@@ -1,0 +1,158 @@
+# ============================================================================
+# OMV Manager - Configuração
+# ============================================================================
+
+server:
+  host: 192.168.1.208
+  port: 22
+  username: root
+  password: "Fiat@1234"
+
+settings:
+  base_path: /srv/dev-disk-by-uuid-cdc81bc1-9210-48b1-a342-28f7ce43fdd0
+  mntentref: 3fe14629-114d-440c-aa00-56581fd52ef5
+  workgroup: WORKGROUP
+
+# ---------------------------------------------------------------------------
+# Usuários
+#   nome:senha:grupo_primario:grupos_adicionais:email
+# ---------------------------------------------------------------------------
+users:
+  - nome: joao
+    senha: senha123
+    grupo_primario: engenharia
+    grupos_adicionais: [administracao]
+    email: joao@empresa.com
+  - nome: maria
+    senha: senha456
+    grupo_primario: administracao
+    grupos_adicionais: []
+    email: maria@empresa.com
+  - nome: pedro
+    senha: senha789
+    grupo_primario: seguranca
+    grupos_adicionais: []
+    email: pedro@empresa.com
+  - nome: ana
+    senha: senha000
+    grupo_primario: engenharia
+    grupos_adicionais: []
+    email: ana@empresa.com
+
+# ---------------------------------------------------------------------------
+# Grupos
+#   nome:comentario:membros
+# ---------------------------------------------------------------------------
+groups:
+  - nome: engenharia
+    comentario: Departamento de Engenharia
+    membros: [joao, ana]
+  - nome: administracao
+    comentario: Departamento Administrativo
+    membros: [maria]
+  - nome: seguranca
+    comentario: Departamento de Seguranca
+    membros: [pedro]
+  - nome: rh
+    comentario: Recursos Humanos
+    membros: [maria, ana]
+
+# ---------------------------------------------------------------------------
+# Pastas
+#   nome:grupo_proprietario:permissao
+# ---------------------------------------------------------------------------
+folders:
+  - nome: engenharia
+    grupo: engenharia
+    permissao: "770"
+  - nome: administracao
+    grupo: administracao
+    permissao: "770"
+  - nome: seguranca
+    grupo: seguranca
+    permissao: "770"
+  - nome: rh
+    grupo: rh
+    permissao: "770"
+  - nome: publico
+    grupo: users
+    permissao: "777"
+  - nome: projetos
+    grupo: engenharia
+    permissao: "770"
+
+# ---------------------------------------------------------------------------
+# ACLs
+#   pasta:tipo:alvo:permissao
+#   tipo: user | group
+#   permissao: rwx, rx, r, rw, etc
+# ---------------------------------------------------------------------------
+acls:
+  - pasta: engenharia
+    tipo: user
+    alvo: joao
+    permissao: rwx
+  - pasta: engenharia
+    tipo: user
+    alvo: ana
+    permissao: rwx
+  - pasta: engenharia
+    tipo: group
+    alvo: administracao
+    permissao: rx
+  - pasta: administracao
+    tipo: user
+    alvo: maria
+    permissao: rwx
+  - pasta: administracao
+    tipo: group
+    alvo: rh
+    permissao: rx
+  - pasta: projetos
+    tipo: user
+    alvo: joao
+    permissao: rwx
+  - pasta: projetos
+    tipo: user
+    alvo: ana
+    permissao: rwx
+  - pasta: projetos
+    tipo: group
+    alvo: rh
+    permissao: rx
+
+# ---------------------------------------------------------------------------
+# Compartilhamentos SMB
+#   nome:comentario:guest:browseable:inherit_acl
+# ---------------------------------------------------------------------------
+smb_shares:
+  - nome: publico
+    comentario: Compartilhamento Publico
+    guest: allow
+    browseable: true
+    inherit_acl: false
+  - nome: engenharia
+    comentario: Arquivos Engenharia
+    guest: no
+    browseable: true
+    inherit_acl: true
+  - nome: administracao
+    comentario: Arquivos Administrativos
+    guest: no
+    browseable: true
+    inherit_acl: true
+  - nome: seguranca
+    comentario: Arquivos Seguranca
+    guest: no
+    browseable: true
+    inherit_acl: true
+  - nome: rh
+    comentario: Arquivos RH
+    guest: no
+    browseable: true
+    inherit_acl: true
+  - nome: projetos
+    comentario: Projetos da Empresa
+    guest: no
+    browseable: true
+    inherit_acl: true
