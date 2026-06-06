@@ -1,0 +1,60 @@
+# ============================================================================
+# OMV Manager - Configuração (exemplo)
+# Copie para config.yaml e preencha com seus dados
+# ============================================================================
+
+server:
+  host: 192.168.1.100
+  port: 22
+  username: root
+  password: "sua_senha_aqui"
+
+settings:
+  base_path: /srv/dev-disk-by-uuid-seuuuid
+  mntentref: seu-mntentref-uuid
+  workgroup: WORKGROUP
+
+# ---------------------------------------------------------------------------
+# Usuários
+# ---------------------------------------------------------------------------
+users:
+  - nome: usuario1
+    senha: senha123
+    grupo_primario: grupo1
+    grupos_adicionais: []
+    email: usuario1@exemplo.com
+
+# ---------------------------------------------------------------------------
+# Grupos
+# ---------------------------------------------------------------------------
+groups:
+  - nome: grupo1
+    comentario: Descricao do Grupo
+    membros: [usuario1]
+
+# ---------------------------------------------------------------------------
+# Pastas
+# ---------------------------------------------------------------------------
+folders:
+  - nome: pasta1
+    grupo: grupo1
+    permissao: "770"
+
+# ---------------------------------------------------------------------------
+# ACLs
+# ---------------------------------------------------------------------------
+acls:
+  - pasta: pasta1
+    tipo: user
+    alvo: usuario1
+    permissao: rwx
+
+# ---------------------------------------------------------------------------
+# Compartilhamentos SMB
+# ---------------------------------------------------------------------------
+smb_shares:
+  - nome: pasta1
+    comentario: Compartilhamento
+    guest: no
+    browseable: true
+    inherit_acl: true
