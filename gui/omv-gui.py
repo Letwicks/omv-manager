@@ -16,7 +16,7 @@ import base64
 import socket
 import time
 
-_OMV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "omv-manager.py")
+_OMV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "cli", "omv-manager.py")
 _spec = importlib.util.spec_from_file_location("omv_manager_mod", _OMV_PATH)
 _omv_mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_omv_mod)

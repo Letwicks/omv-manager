@@ -3,10 +3,10 @@
 OMV Manager - Gerenciamento de Usuários, Pastas e Permissões no OpenMediaVault
 
 Uso:
-    python omv-manager.py --config config.yaml --apply
-    python omv-manager.py --config config.yaml --dry-run
-    python omv-manager.py --config config.yaml --status
-    python omv-manager.py --help
+    python cli/omv-manager.py --config config.yaml --apply
+    python cli/omv-manager.py --config config.yaml --dry-run
+    python cli/omv-manager.py --config config.yaml --status
+    python cli/omv-manager.py --help
 """
 
 import argparse

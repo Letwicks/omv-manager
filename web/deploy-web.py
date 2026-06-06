@@ -12,15 +12,16 @@ import time
 import importlib.util
 
 import yaml
-
 HERE = os.path.dirname(os.path.abspath(__file__))
-_OMV_MOD = os.path.join(HERE, "omv-manager.py")
+ROOT = os.path.dirname(HERE)
+
+_OMV_MOD = os.path.join(ROOT, "cli", "omv-manager.py")
 _spec = importlib.util.spec_from_file_location("omv_manager_mod", _OMV_MOD)
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 ServerConfig = _mod.ServerConfig
 SSHClient = _mod.SSHClient
-CFG_PATH = os.path.join(HERE, "config.yaml")
+CFG_PATH = os.path.join(ROOT, "config.yaml")
 
 REMOTE_DIR = "/opt/omv-manager-web"
 

@@ -2,93 +2,106 @@
 
 ## Project
 
-Automated management of users, groups, folders, ACLs, and SMB shares on OpenMediaVault 8.x (Debian 13) via SSH. Two implementations coexist:
+Automated management of users, groups, folders, ACLs, and SMB shares on OpenMediaVault 8.x (Debian 13). Three implementations coexist:
 
-- **`omv-manager.py`** — CLI tool, remote via `paramiko` SSH
-- **`omv-manager.sh`** — standalone Bash alternative, runs directly on the OMV server
+- **`cli/omv-manager.py`** — CLI tool, remote via `paramiko` SSH
+- **`gui/omv-gui.py`** — Tkinter GUI, imports `cli/omv-manager.py` via `importlib`
+- **`web/app.py`** — Flask web app, runs directly on OMV server (no SSH)
 
-Both are **idempotent** and implement the same flow.
+All are **idempotent** and implement the same core flow.
 
 ## Key files
 
 | File | Role |
 |---|---|
-| `omv-manager.py` | CLI + remote SSH orchestration |
-| `omv-manager.sh` | Bash in-situ alternative (run on the OMV server) |
-| `omv-gui.py` | Tkinter GUI, imports `omv-manager.py` via `importlib` (hyphen in filename → `spec_from_file_location`) |
-| `config.yaml` | YAML config for CLI tool (server, users, groups, folders, ACLs, SMB shares) |
-| `omv-gui.py` + `omv-creds.json` | GUI saves connection credentials when "Salvar senha" is checked |
+| `cli/omv-manager.py` | CLI + remote SSH orchestration |
+| `gui/omv-gui.py` | Tkinter GUI, imports `../cli/omv-manager.py` via `importlib` |
+| `web/app.py` | Flask web app (runs on server, `subprocess` instead of SSH) |
+| `web/localshell.py` | Drop-in replacement for SSHClient using `subprocess` |
+| `web/deploy-web.py` | Deploy web app to OMV server via SSH |
+| `config.yaml` | YAML config (gitignored — sensitive data) |
+| `cli/config.yaml.example` | Template without real credentials |
 
 ## Commands
 
 ```bash
-pip install -r requirements.txt
+# CLI
+pip install cli/requirements.txt
+python cli/omv-manager.py --config config.yaml --apply
+python cli/omv-manager.py --config config.yaml --dry-run
+python cli/omv-manager.py --config config.yaml --status
 
-python omv-manager.py --config config.yaml --apply
-python omv-manager.py --config config.yaml --dry-run
-python omv-manager.py --config config.yaml --status
-python omv-gui.py
+# GUI
+python gui/omv-gui.py
 
-# Bash variant (run on OMV server):
-./omv-manager.sh                  # apply all
-./omv-manager.sh --dry-run
-./omv-manager.sh --status
+# Web (dev)
+pip install web/requirements-web.txt
+cd web && python app.py
+
+# Web (deploy from dev machine)
+cd web && python deploy-web.py
 ```
 
 ## Dependencies
 
-- `paramiko>=3.0.0`, `pyyaml>=6.0`, `zeroconf>=0.149.0`
-- `zeroconf` is used by the GUI's "Buscar" (mDNS discovery) feature
+- `cli/requirements.txt`: `paramiko>=3.0.0`, `pyyaml>=6.0`, `zeroconf>=0.149.0`
+- `web/requirements-web.txt`: `flask`, `gunicorn`
 
-## GUI features (omv-gui.py)
+## GUI features (gui/omv-gui.py)
 
 ### Connection
 - **Conectar** dialog: Host/IP, Port (22), Usuário (root), Senha
 - **Salvar senha** checkbox → saved to `omv-creds.json`
-- **Buscar** button → mDNS discovery via `zeroconf` (`_ssh._tcp`, `_workstation._tcp`), shows results in a TreeView dialog
+- **Buscar** button → mDNS discovery via `zeroconf` (`_ssh._tcp`, `_workstation._tcp`)
 
 ### Tabs
 1. **Usuários** — lists system users (UID ≥ 1000, login shell). Add/Edit/Delete with SSH.
-   - Groups are multi-select; first selected = primary group, rest = supplementary.
-   - Edit mode shows password status (`passwd -S`).
+   - Groups multi-select; first = primary, rest = supplementary.
+   - Edit shows password status (`passwd -S`).
 2. **Pastas** — reads OMV shared folders from `config.xml`. Add/Edit/Delete.
-   - **Add**: selects disk (from OMV fstab), group, permissions, optional SMB share.
-   - Creates directory on the disk mount point, registers shared folder in XML, optionally creates SMB share.
-   - Runs `omv-salt deploy run samba` + `systemctl restart smbd nmbd`.
-3. **Grupos** — lists groups from OMV XML. Add/Edit/Delete.
-   - Members are multi-select from user list.
-   - Add: `groupadd` + XML registration via base64-safe Python script.
+   - Add: selects disk (from OMV fstab), group, permissions (presets), optional SMB share.
+3. **Grupos** — lists groups from OMV XML. Add/Edit/Delete. Members multi-select.
 
 ### UUID generation
 - Must use `str(uuid.uuid4())` (with dashes) — OMV validates UUIDv4 format.
-- `.hex[:36]` (no dashes) causes `SchemaValidationException`.
 
-### Architecture
-- All dialogs use `self.root.wait_window(dlg)` (not `self.wait_window(dlg)`).
-- SSH operations run in `threading.Thread`; results pushed via `queue.Queue`.
-- Dark theme (`BG="#1e1e2e"`, `FG="#cdd6f4"`, `ACCENT="#89b4fa"`, etc.).
-- ttk.Notebook for tabs with custom dark style.
-- ttk.Treeview for scan results dialog.
-- Menu bar: Ajuda → Instruções / Sobre.
-
-## CLI operations (omv-manager.py fixed order)
+## CLI flow (cli/omv-manager.py fixed order)
 
 1. Create Linux groups
-2. Register groups in OMV XML (`/etc/openmediavault/config.xml`)
-3. Create Linux users (with Samba password via `smbpasswd`)
-4. Register users in OMV XML
-5. Create folders on disk with `setgid`
-6. Set ACLs (user/group, with default ACLs)
-7. Register shared folders in OMV XML (with privilege ACLs)
+2. Register in OMV XML
+3. Create Linux users + Samba password
+4. Register in OMV XML
+5. Create folders with `setgid`
+6. Set ACLs
+7. Register shared folders in OMV XML
 8. Register SMB shares in OMV XML
-9. Apply with `omv-salt deploy run samba` (skipped in dry-run)
+9. `omv-salt deploy run samba`
+
+## Web app (web/app.py)
+
+### Routes
+- `/` — Dashboard
+- `/login`, `/logout` — Auth
+- `/usuarios` — User CRUD
+- `/grupos` — Group CRUD
+- `/pastas` — Folder CRUD
+- `/acls` — ACL management
+- `/smb` — SMB share management
+- `/exportar`, `/importar` — JSON backup
+
+### Architecture
+- `_login_required` renders `login.html` directly (200) instead of 302 redirect
+- `_htx()` helper — HTMX partial or full page (wraps in `base.html`)
+- `_ok()` / `_err()` — HTMX toast responses with `HX-Trigger: refreshList`
+- Permissions use presets (`_PERM_PRESETS`) with radio buttons
+- Light/dark theme toggle via `data-bs-theme` + `localStorage`
 
 ## Architecture notes
 
-- Both `omv-manager.py` and `omv-manager.sh` are self-contained — changes must be mirrored.
-- `omv-gui.py` loads `omv-manager.py` via `importlib.util.spec_from_file_location`.
-- OMV state stored in `/etc/openmediavault/config.xml` (XML). Edited directly via `xml.etree.ElementTree` or `xmlstarlet`.
-- `omv-manager.sh` requires `jq` and `xmlstarlet` on the server.
-- `config.yaml` is the single source of truth for the CLI tool.
-- Base path (`/srv/dev-disk-by-uuid-...`) is auto-detected from OMV config on connect.
-- Portuguese UI labels throughout; no tests/linting/CI configured.
+- **`gui/omv-gui.py`** imports `cli/omv-manager.py` via `importlib.util.spec_from_file_location`
+- **`web/deploy-web.py`** imports `cli/omv-manager.py` for SSH and reads root `config.yaml`
+- **`web/app.py`** imports `web/localshell.py` (same interface as SSHClient, uses `subprocess`)
+- OMV state stored in `/etc/openmediavault/config.xml` — edited via `xml.etree.ElementTree`
+- Base path (`/srv/dev-disk-by-uuid-...`) auto-detected from OMV config on connect
+- Permissions: `stat -c '%A'` (e.g. `drwxrwsrwx`) auto-converted to octal (`775`) via `_sym_to_octal()`
+- Portuguese UI labels throughout; no tests/linting/CI configured

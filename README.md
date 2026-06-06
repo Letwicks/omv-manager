@@ -2,32 +2,42 @@
 
 Gestão automatizada de **usuários, grupos, pastas, ACLs e compartilhamentos SMB** no **OpenMediaVault 8.x** (Debian 13).
 
-Três implementações coexistem neste repositório — escolha a mais adequada:
+Três implementações coexistem neste repositório — cada uma na sua pasta:
 
-| App | Tipo | Onde roda | Interface |
-|---|---|---|---|
-| `omv-manager.py` | CLI | Qualquer máquina (SSH remoto) | Terminal |
-| `omv-gui.py` | GUI (Tkinter) | Windows/Linux desktop (SSH remoto) | Janela gráfica |
-| `app.py` | Web (Flask) | **Direto no servidor OMV** | Navegador |
+| App | Pasta | Tipo | Onde roda | Interface |
+|---|---|---|---|---|
+| CLI | `cli/` | Terminal | Qualquer máquina (SSH remoto) | Linha de comando |
+| GUI | `gui/` | Tkinter | Windows/Linux desktop (SSH remoto) | Janela gráfica |
+| Web | `web/` | Flask | **Direto no servidor OMV** | Navegador |
+
+```
+/
+├── cli/          # Aplicação de linha de comando
+├── gui/          # Interface gráfica desktop
+├── web/          # Interface web (Flask)
+├── config.yaml   # Configuração (gitignorado — dados sensíveis)
+├── README.md
+└── .gitignore
+```
 
 ---
 
-## 1. omv-manager.py (CLI)
+## CLI — `cli/omv-manager.py`
 
 Aplicação **original** de linha de comando. Conecta via SSH ao servidor OMV e executa todo o fluxo de criação/remoção lendo um arquivo `config.yaml`.
 
 ### Dependências
 
 ```bash
-pip install -r requirements.txt
+pip install cli/requirements.txt
 ```
 
 ### Uso
 
 ```bash
-python omv-manager.py --config config.yaml --apply    # aplicar config
-python omv-manager.py --config config.yaml --dry-run   # simular
-python omv-manager.py --config config.yaml --status    # status do servidor
+python cli/omv-manager.py --config config.yaml --apply    # aplicar config
+python cli/omv-manager.py --config config.yaml --dry-run   # simular
+python cli/omv-manager.py --config config.yaml --status    # status do servidor
 ```
 
 ### Fluxo (ordem fixa)
@@ -44,20 +54,20 @@ python omv-manager.py --config config.yaml --status    # status do servidor
 
 ---
 
-## 2. omv-gui.py (GUI — Tkinter)
+## GUI — `gui/omv-gui.py`
 
-Interface gráfica **desktop** que conecta via SSH ao servidor OMV. Permite gestão visual de todos os recursos.
+Interface gráfica **desktop** que conecta via SSH ao servidor OMV.
 
 ### Dependências
 
 ```bash
-pip install -r requirements.txt
+pip install cli/requirements.txt    # compartilha as mesmas deps do CLI
 ```
 
 ### Uso
 
 ```bash
-python omv-gui.py
+python gui/omv-gui.py
 ```
 
 ### Funcionalidades
@@ -74,31 +84,33 @@ python omv-gui.py
 
 ---
 
-## 3. app.py (Web — Flask)
+## Web — `web/app.py`
 
 Interface **web** que roda **diretamente no servidor OMV** (sem SSH). Usa `subprocess` local.
 
 ### Dependências (lado servidor)
 
 ```bash
-pip install flask gunicorn
+pip install -r web/requirements-web.txt
 ```
 
 ### Uso (desenvolvimento)
 
 ```bash
 export OMV_WEB_PASS=omvadmin
-python app.py
+cd web && python app.py
 ```
 
 ### Uso (produção — systemd)
 
 ```bash
-# Via script de deploy (a partir da máquina Windows):
-python deploy-web.py
+cd web && python deploy-web.py
+```
 
-# Ou manualmente no servidor:
-cp deploy/omv-web.service /etc/systemd/system/
+Ou manualmente no servidor:
+
+```bash
+cp web/deploy/omv-web.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now omv-web
 # Acessar: http://<servidor>:8080
@@ -122,43 +134,51 @@ Senha definida pela variável de ambiente `OMV_WEB_PASS` (padrão: `omvadmin`).
 
 ---
 
-## Arquitetura
+## Estrutura completa
 
 ```
 /
-├── omv-manager.py          # CLI — orquestração via SSH (paramiko)
-├── omv-manager.sh          # Bash alternativo (roda direto no servidor)
-├── omv-gui.py              # GUI Tkinter (desktop, SSH remoto)
-├── app.py                  # Web Flask (roda no servidor, subprocess)
-├── localshell.py           # Substituto de SSHClient via subprocess
-├── deploy-web.py           # Deploy automático do web app via SSH
-├── config.yaml             # Config (gitignorado — dados sensíveis)
-├── config.yaml.example     # Template de config sem dados reais
-├── requirements.txt        # Deps: paramiko, pyyaml, zeroconf
-├── requirements-web.txt    # Deps do web app: flask, gunicorn
-├── deploy/
-│   ├── omv-web.service     # Systemd unit (porta 8080)
-│   └── omv-manager.conf    # Nginx location (opcional)
-└── templates/              # Jinja2 templates do web app
-    ├── base.html
-    ├── login.html
-    ├── dashboard.html
-    ├── usuarios.html
-    ├── usuario_form.html
-    ├── grupos.html
-    ├── grupo_form.html
-    ├── pastas.html
-    ├── pasta_form.html
-    ├── acls.html
-    ├── acl_form.html
-    ├── smb.html
-    └── smb_form.html
+├── cli/
+│   ├── omv-manager.py          # CLI — orquestração via SSH (paramiko)
+│   ├── requirements.txt        # Deps: paramiko, pyyaml, zeroconf
+│   └── config.yaml.example     # Template de config sem dados reais
+│
+├── gui/
+│   └── omv-gui.py              # GUI Tkinter (desktop, SSH remoto)
+│
+├── web/
+│   ├── app.py                  # Web Flask (roda no servidor, subprocess)
+│   ├── localshell.py           # Substituto de SSHClient via subprocess
+│   ├── deploy-web.py           # Deploy automático do web app via SSH
+│   ├── requirements-web.txt    # Deps do web app: flask, gunicorn
+│   ├── deploy/
+│   │   ├── omv-web.service     # Systemd unit (porta 8080)
+│   │   └── omv-manager.conf    # Nginx location (opcional)
+│   └── templates/
+│       ├── base.html
+│       ├── login.html
+│       ├── dashboard.html
+│       ├── usuarios.html
+│       ├── usuario_form.html
+│       ├── grupos.html
+│       ├── grupo_form.html
+│       ├── pastas.html
+│       ├── pasta_form.html
+│       ├── acls.html
+│       ├── acl_form.html
+│       ├── smb.html
+│       └── smb_form.html
+│
+├── config.yaml                 # Config (gitignorado — dados sensíveis)
+├── README.md
+└── .gitignore
 ```
 
 ## Notas técnicas
 
 - **UUID**: Sempre `str(uuid.uuid4())` (com traços) — OMV valida UUIDv4 com traços
-- **omv-gui.py** importa `omv-manager.py` via `importlib.util.spec_from_file_location` (devido ao hífen no nome)
-- **app.py** importa `localshell.py` (mesma interface de `SSHClient`, mas usa `subprocess`)
+- **gui/omv-gui.py** importa `cli/omv-manager.py` via `importlib.util.spec_from_file_location` (devido ao hífen no nome)
+- **web/app.py** importa `web/localshell.py` (mesma interface de `SSHClient`, mas usa `subprocess`)
+- **web/deploy-web.py** lê `config.yaml` da raiz do projeto e importa `cli/omv-manager.py`
 - **Todas as permissões** nas interfaces web e GUI usam **presets** em português com conversão automática de formato simbólico (`drwxrwsrwx`) para octal (`775`)
 - **Idempotente**: todas as operações podem ser repetidas sem duplicar entradas
