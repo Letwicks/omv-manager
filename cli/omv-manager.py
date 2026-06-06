@@ -726,9 +726,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemplos:
-  python omv-manager.py --config config.yaml --apply
-  python omv-manager.py --config config.yaml --dry-run
-  python omv-manager.py --config config.yaml --status
+  python cli/omv-manager.py --config config.yaml --apply
+  python cli/omv-manager.py --config config.yaml --dry-run
+  python cli/omv-manager.py --config config.yaml --status
         """,
     )
     parser.add_argument("--config", "-c", default="config.yaml", help="Arquivo de configuração YAML")
