@@ -169,10 +169,34 @@ Senha definida pela variável de ambiente `OMV_WEB_PASS` (padrão: `omvadmin`).
 │       ├── smb.html
 │       └── smb_form.html
 │
+├── prints/                     # Screenshots das interfaces
+│   ├── gui01.png
+│   ├── gui02.png
+│   ├── web01.png
+│   └── web02.png
+│
 ├── config.yaml                 # Config (gitignorado — dados sensíveis)
 ├── README.md
 └── .gitignore
 ```
+
+---
+
+## Screenshots
+
+### GUI (Tkinter)
+
+| Conexão | Lista de pastas |
+|---|---|
+| ![gui01](prints/gui01.png) | ![gui02](prints/gui02.png) |
+
+### Web (Flask)
+
+| Dashboard | Usuários |
+|---|---|
+| ![web01](prints/web01.png) | ![web02](prints/web02.png) |
+
+---
 
 ## Notas técnicas
 
