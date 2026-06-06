@@ -1,0 +1,63 @@
+<!-- Modal wrapper -->
+<div class="modal fade" id="genericModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form hx-post="{% if not user %}{{ url_for('usuario_novo') }}{% else %}{{ url_for('usuario_editar', username=user.username) }}{% endif %}"
+            hx-target="#toast-area" hx-swap="innerHTML"
+            hx-trigger="submit" hx-indicator="#form-spin">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ 'Editar' if user else 'Adicionar' }} Usu&aacute;rio</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Usu&aacute;rio</label>
+            <input type="text" name="username" class="form-control"
+                   value="{{ user.username if user else '' }}"
+                   {{ 'readonly' if user else '' }} required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Senha</label>
+            <input type="password" name="password" class="form-control"
+                   placeholder="{{ 'deixe em branco para manter' if user else 'senha' }}">
+            {% if user and user.pass_status %}
+            <small class="text-secondary">{{ user.pass_status }}</small>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control"
+                   value="{{ user.gecos if user else '' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Grupo prim&aacute;rio</label>
+            <select name="primary_group" class="form-select" {{ 'disabled' if user else '' }}>
+              {% for g in all_groups %}
+              <option value="{{ g }}" {{ 'selected' if user and g==user.primary_group else '' }}>{{ g }}</option>
+              {% endfor %}
+            </select>
+            {% if user %}
+            <input type="hidden" name="primary_group" value="{{ user.primary_group }}">
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Grupos adicionais</label>
+            <select name="extra_groups" class="form-select" multiple size="5">
+              {% for g in all_groups %}
+              <option value="{{ g }}"
+                {{-' selected' if user and g in (user.groups or '').split(',') else '' }}>{{ g }}</option>
+              {% endfor %}
+            </select>
+            <small class="text-secondary">Ctrl+clique para m&uacute;ltiplos</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            Salvar <span id="form-spin" class="spinner-border spinner-border-sm htmx-indicator"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

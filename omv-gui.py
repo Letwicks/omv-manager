@@ -6,10 +6,11 @@ OMV Manager - Interface Gráfica (Tkinter)
 import os
 import sys
 import re
+import json
 import threading
 import queue
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import importlib.util
 import base64
 import socket
@@ -84,6 +85,27 @@ print(m.text.strip() if m is not None else '')
     except Exception:
         pass
     return "/srv"
+
+
+def _sym_to_octal(sym):
+    """Converte 'drwxrwsrwx' → '775' (ignora tipo e bits especiais)."""
+    if not sym or len(sym) < 10:
+        return "770"
+    p = sym[1:10].replace("s", "x").replace("S", "-").replace("t", "x").replace("T", "-")
+    val = 0
+    for i, ch in enumerate(p):
+        if ch != "-":
+            val |= 1 << (8 - i)
+    return oct(val)[2:].zfill(3)
+
+
+_PERM_PRESETS = [
+    ("770", "Dono e grupo: acesso total / Outros: nenhum"),
+    ("755", "Dono: acesso total / Grupo+Outros: ler e executar"),
+    ("750", "Dono: acesso total / Grupo: ler e executar / Outros: nenhum"),
+    ("777", "Todos: acesso total"),
+    ("700", "Apenas dono: acesso total"),
+]
 
 
 def _style_btn(parent, text, command, fg, width=None):
@@ -570,8 +592,8 @@ class FolderDialog(tk.Toplevel):
         self.transient(parent)
         self.grab_set()
         self._build()
-        self.minsize(400, 280)
-        self.geometry("440x320+{}+{}".format(
+        self.minsize(520, 380)
+        self.geometry("580x420+{}+{}".format(
             parent.winfo_rootx() + 100, parent.winfo_rooty() + 60
         ))
 
@@ -631,11 +653,35 @@ class FolderDialog(tk.Toplevel):
             self.cb_group.set("users")
         r += 1
 
-        _style_label(frm, "Permissão (ex: 770):").grid(row=r, column=0, sticky="w", pady=3)
-        self.entry_perm = _style_entry(frm, width=10)
-        self.entry_perm.grid(row=r, column=1, sticky="w", pady=3, padx=(8, 0))
-        default_perm = self.folder_data.get("permissions", "770") if is_edit else "770"
-        self.entry_perm.insert(0, default_perm)
+        _style_label(frm, "Permissão:").grid(row=r, column=0, sticky="nw", pady=3)
+        self.perm_var = tk.StringVar()
+        current_perm = self.folder_data.get("permissions", "770") if is_edit else "770"
+        in_presets = any(current_perm == v for v, _ in _PERM_PRESETS)
+        perm_frm = tk.Frame(frm, bg=BG)
+        perm_frm.grid(row=r, column=1, sticky="w", pady=3, padx=(8, 0))
+        for val, desc in _PERM_PRESETS:
+            rb = tk.Radiobutton(
+                perm_frm, text=f"{val} — {desc}", variable=self.perm_var,
+                value=val, font=FONT_SMALL, bg=BG, fg=FG,
+                selectcolor=SURFACE, activebackground=BG, activeforeground=ACCENT,
+                anchor="w", justify=tk.LEFT, tristatevalue="",
+            )
+            rb.pack(fill="x", pady=1)
+        self.perm_var.set(current_perm if in_presets else "")
+        # Custom entry
+        cust_frm = tk.Frame(perm_frm, bg=BG)
+        cust_frm.pack(fill="x", pady=1)
+        self.perm_custom_rb = tk.Radiobutton(
+            cust_frm, text="Personalizado:", variable=self.perm_var,
+            value="", font=FONT_SMALL, bg=BG, fg=FG,
+            selectcolor=SURFACE, activebackground=BG, activeforeground=ACCENT,
+        )
+        self.perm_custom_rb.pack(side=tk.LEFT)
+        self.entry_perm = _style_entry(cust_frm, width=8)
+        self.entry_perm.pack(side=tk.LEFT, padx=(4, 0))
+        if not in_presets and is_edit:
+            self.entry_perm.insert(0, current_perm)
+            self.perm_var.set("")
         r += 1
 
         self.smb_var = tk.BooleanVar(value=True)
@@ -674,9 +720,9 @@ class FolderDialog(tk.Toplevel):
         if not name:
             self.lbl_status.configure(text="Nome da pasta é obrigatório.")
             return
-        perm = self.entry_perm.get().strip()
-        if not re.match(r"^\d{3}$", perm):
-            self.lbl_status.configure(text="Permissão deve ser 3 dígitos (ex: 770).")
+        perm = self.perm_var.get().strip() or self.entry_perm.get().strip()
+        if not re.match(r"^\d{3,4}$", perm):
+            self.lbl_status.configure(text="Permissão deve ser 3-4 dígitos (ex: 770).")
             return
         disk_label = self.cb_disk.get()
         disk = self.disk_map.get(disk_label, {})
@@ -856,11 +902,27 @@ class OMVGUI:
         self._build_info_bar()
         self._build_notebook()
         self._build_log()
+        self.root.bind("<Control-e>", lambda e: self._on_export())
+        self.root.bind("<Control-E>", lambda e: self._on_export())
+        self.root.bind("<Control-i>", lambda e: self._on_import())
+        self.root.bind("<Control-I>", lambda e: self._on_import())
 
     def _build_menu(self):
         menubar = tk.Menu(self.root, bg=BTN_BG, fg=FG,
                           activebackground=ACCENT, activeforeground=BG,
                           font=FONT)
+
+        self.arquivo_menu = tk.Menu(menubar, tearoff=False, bg=SURFACE, fg=FG,
+                                    activebackground=ACCENT, activeforeground=BG,
+                                    font=FONT)
+        self.arquivo_menu.add_command(label="Exportar configuração...",
+                                      command=self._on_export,
+                                      accelerator="Ctrl+E", state=tk.DISABLED)
+        self.arquivo_menu.add_command(label="Importar configuração...",
+                                      command=self._on_import,
+                                      accelerator="Ctrl+I", state=tk.DISABLED)
+        menubar.add_cascade(label="Arquivo", menu=self.arquivo_menu)
+
         ajuda = tk.Menu(menubar, tearoff=False, bg=SURFACE, fg=FG,
                         activebackground=ACCENT, activeforeground=BG,
                         font=FONT)
@@ -889,6 +951,10 @@ class OMVGUI:
             "4. Aba Grupos:\n"
             "   - Gerencia grupos no Linux e no OMV\n"
             "   - Adiciona/remove membros por multisseleção\n\n"
+            "5. Arquivo > Exportar configuração:\n"
+            "   - Salva backup JSON de usuários, grupos e pastas\n"
+            "6. Arquivo > Importar configuração:\n"
+            "   - Restaura grupos, usuários (sem senha) e pastas\n\n"
             "Todas as operações são aplicadas via SSH no servidor OMV."
         )
         messagebox.showinfo("Instruções", msg, parent=self.root)
@@ -1104,6 +1170,8 @@ class OMVGUI:
                     self.btn_folder_add, self.btn_folder_edit, self.btn_folder_del,
                     self.btn_group_add, self.btn_group_edit, self.btn_group_del):
             btn.configure(state=state)
+        self.arquivo_menu.entryconfig("Exportar configuração...", state=state)
+        self.arquivo_menu.entryconfig("Importar configuração...", state=state)
         if not self.connected:
             self.list_users.delete(0, tk.END)
             self.list_folders.delete(0, tk.END)
@@ -1228,7 +1296,7 @@ class OMVGUI:
                 """python3 -c "
 import xml.etree.ElementTree as ET
 t = ET.parse('/etc/openmediavault/config.xml')
-for g in t.findall('.//group/name'):
+for g in t.findall('.//system/usermanagement/groups/group/name'):
     print(g.text)
 " """, timeout=15)
             groups = sorted(g.strip() for g in out.split("\n") if g.strip())
@@ -1242,7 +1310,7 @@ for g in t.findall('.//group/name'):
                 """python3 -c "
 import xml.etree.ElementTree as ET
 t = ET.parse('/etc/openmediavault/config.xml')
-for g in t.findall('.//group'):
+for g in t.findall('.//system/usermanagement/groups/group'):
     name = g.find('name')
     comment = g.find('comment')
     print((name.text or '') + '|' + (comment.text or ''))
@@ -1338,7 +1406,7 @@ for sf in t.findall('.//sharedfolder'):
                     "name": name, "path": path, "disk": disk, "fstype": fstype,
                     "owner": sp[0] if len(sp) > 0 else "",
                     "group": sp[1] if len(sp) > 1 else "",
-                    "permissions": sp[2] if len(sp) > 2 else "",
+                    "permissions": _sym_to_octal(sp[2]) if len(sp) > 2 else "770",
                     "comment": comment,
                 })
             self.log_queue.put(("folders_loaded", folders))
@@ -1917,7 +1985,7 @@ for m in t.findall('.//mntent'):
                     "ET.register_namespace('', '')\n"
                     "t = ET.parse('/etc/openmediavault/config.xml')\n"
                     "r = t.getroot()\n"
-                    "g = r.find(\".//group[name='\" + name + \"']\")\n"
+                    "g = r.find(\".//system/usermanagement/groups/group[name='\" + name + \"']\")\n"
                     "if g is not None:\n"
                     "    c = g.find('comment')\n"
                     "    if c is not None:\n"
@@ -1955,16 +2023,20 @@ for m in t.findall('.//mntent'):
 
         def task():
             try:
+                name_b64 = base64.b64encode(name.encode()).decode()
                 script = (
-                    "import xml.etree.ElementTree as ET; "
-                    "ET.register_namespace('', ''); "
-                    "t = ET.parse('/etc/openmediavault/config.xml'); "
-                    "r = t.getroot(); "
-                    f"g = r.find(\".//group[name='{name}']\"); "
-                    "if g is not None: "
-                    "    p = r.find('.//system/usermanagement/groups'); "
-                    "    if p is not None: p.remove(g); "
-                    "t.write('/etc/openmediavault/config.xml', encoding='UTF-8', xml_declaration=True)"
+                    "import xml.etree.ElementTree as ET\n"
+                    "import base64\n"
+                    f"n = base64.b64decode('{name_b64}').decode()\n"
+                    "ET.register_namespace('', '')\n"
+                    "t = ET.parse('/etc/openmediavault/config.xml')\n"
+                    "r = t.getroot()\n"
+                    "g = r.find(\".//system/usermanagement/groups/group[name='\" + n + \"']\")\n"
+                    "if g is not None:\n"
+                    "    p = r.find('.//system/usermanagement/groups')\n"
+                    "    if p is not None:\n"
+                    "        p.remove(g)\n"
+                    "t.write('/etc/openmediavault/config.xml', encoding='UTF-8', xml_declaration=True)\n"
                 )
                 self.ssh.exec_python(script)
                 self.ssh.exec_assert(f"groupdel '{name}' 2>/dev/null || true", timeout=10)
@@ -1978,6 +2050,263 @@ for m in t.findall('.//mntent'):
 
         t = threading.Thread(target=task, daemon=True)
         t.start()
+
+    # ===================================================================
+    # EXPORT / IMPORT
+    # ===================================================================
+
+    def _on_export(self):
+        if not self.connected or self.busy:
+            return
+        path = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON Backup", "*.json")],
+            title="Exportar configuração",
+            parent=self.root,
+        )
+        if not path:
+            return
+        data = {
+            "version": "1.0",
+            "exported_at": __import__("datetime").datetime.now().isoformat(),
+            "server": self.lbl_hostname.cget("text") if self.connected else "",
+            "groups": [
+                {"name": g["name"], "comment": g.get("comment", ""),
+                 "members": g.get("members", [])}
+                for g in self.groups_data
+            ],
+            "users": [
+                {"username": u["username"],
+                 "primary_group": u["primary_group"],
+                 "extra_groups": [g.strip() for g in u.get("groups", "").split(",") if g.strip()],
+                 "email": u.get("gecos", "")}
+                for u in self.users_data
+            ],
+            "folders": [
+                {"name": f["name"], "group": f.get("group", ""),
+                 "permissions": f.get("permissions", ""),
+                 "disk": f.get("disk", ""),
+                 "comment": f.get("comment", ""),
+                 "path": f.get("path", "")}
+                for f in self.folders_data
+            ],
+        }
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            self._log(f"Configuração exportada: {path}", GREEN)
+        except Exception as e:
+            self._log(f"Erro ao exportar: {e}", RED)
+
+    def _on_import(self):
+        if not self.connected or self.busy:
+            return
+        path = filedialog.askopenfilename(
+            filetypes=[("JSON Backup", "*.json")],
+            title="Importar configuração",
+            parent=self.root,
+        )
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao ler arquivo:\n{e}", parent=self.root)
+            return
+        if not any(k in data for k in ("groups", "users", "folders")):
+            messagebox.showerror("Erro", "Arquivo de backup inválido.",
+                                 parent=self.root)
+            return
+        if not messagebox.askyesno(
+            "Confirmar importação",
+            "Isso criará grupos, usuários e pastas no servidor.\n"
+            "Usuários serão criados SEM senha — defina senhas\n"
+            "manualmente após a importação.\n\n"
+            "Deseja continuar?",
+            parent=self.root,
+        ):
+            return
+        self._set_busy(True)
+        self._log("Importando configuração...", CYAN)
+        t = threading.Thread(target=self._import_apply, args=(data,), daemon=True)
+        t.start()
+
+    def _import_apply(self, data):
+        L = lambda msg, color=FG: self.log_queue.put(("log", (msg, color)))
+        try:
+            disk_by_mount = {d["mount"]: d for d in self.disks_list}
+            groups = data.get("groups", [])
+            users = data.get("users", [])
+            folders = data.get("folders", [])
+            ok = 0
+
+            # ---- GRUPOS ----
+            L(f"Importando {len(groups)} grupo(s)...", CYAN)
+            for g in groups:
+                name = g["name"]
+                comment = g.get("comment", "")
+                members = g.get("members", [])
+                code, _, _ = self.ssh.exec(
+                    f"getent group '{name}' >/dev/null 2>&1", timeout=5
+                )
+                if code == 0:
+                    L(f"  Grupo '{name}' já existe", YELLOW)
+                    ok += 1
+                    continue
+                self.ssh.exec_assert(f"groupadd '{name}'", timeout=10)
+                for m in members:
+                    self.ssh.exec(f"usermod -aG '{name}' '{m}'", timeout=10)
+                nb = base64.b64encode(name.encode()).decode()
+                cb = base64.b64encode(comment.encode()).decode()
+                script = (
+                    "import xml.etree.ElementTree as ET, base64\n"
+                    "ET.register_namespace('', '')\n"
+                    f"n=base64.b64decode('{nb}').decode()\n"
+                    f"c=base64.b64decode('{cb}').decode()\n"
+                    "t=ET.parse('/etc/openmediavault/config.xml')\n"
+                    "r=t.getroot()\n"
+                    "p=r.find('.//system/usermanagement/groups')\n"
+                    "g=ET.SubElement(p,'group')\n"
+                    "ET.SubElement(g,'uuid').text=str(__import__('uuid').uuid4())\n"
+                    "ET.SubElement(g,'name').text=n\n"
+                    "ET.SubElement(g,'comment').text=c\n"
+                    "t.write('/etc/openmediavault/config.xml',encoding='UTF-8',xml_declaration=True)\n"
+                )
+                self.ssh.exec_python(script)
+                L(f"  Grupo '{name}' criado", GREEN)
+                ok += 1
+            L(f"{ok} grupo(s) processados", GREEN if ok else YELLOW)
+
+            # ---- USUÁRIOS ----
+            ok = 0
+            L(f"Importando {len(users)} usuário(s)...", CYAN)
+            for u in users:
+                username = u["username"]
+                primary = u.get("primary_group", "users")
+                extra = u.get("extra_groups", [])
+                code, _, _ = self.ssh.exec(
+                    f"id '{username}' >/dev/null 2>&1", timeout=5
+                )
+                if code == 0:
+                    L(f"  Usuário '{username}' já existe", YELLOW)
+                    ok += 1
+                    continue
+                self.ssh.exec_assert(
+                    f"useradd -m -g '{primary}' -s /bin/bash '{username}'", timeout=10
+                )
+                for eg in extra:
+                    if eg.strip():
+                        self.ssh.exec(f"usermod -aG '{eg.strip()}' '{username}'", timeout=10)
+                L(f"  Usuário '{username}' criado — definir senha em Editar", GREEN)
+                ok += 1
+            L(f"{ok} usuário(s) processados", GREEN if ok else YELLOW)
+
+            # ---- PASTAS ----
+            ok = 0
+            smb_needed = False
+            L(f"Importando {len(folders)} pasta(s)...", CYAN)
+            for f in folders:
+                name = f["name"]
+                group = f.get("group", "users")
+                perms = f.get("permissions", "770")
+                disk_mount = f.get("disk", "")
+                comment = f.get("comment", "")
+                if isinstance(perms, str) and not re.match(r"^\d{3,4}$", perms):
+                    perms = _sym_to_octal(perms)
+                disk = disk_by_mount.get(disk_mount, {})
+                if not disk.get("mount"):
+                    L(f"  Disco '{disk_mount}' não encontrado — pasta '{name}' ignorada", RED)
+                    continue
+                path = f"{disk['mount']}/{name}"
+                code, _, _ = self.ssh.exec(f"test -d '{path}'", timeout=5)
+                if code == 0:
+                    L(f"  Pasta '{name}' já existe em {path}", YELLOW)
+                    ok += 1
+                    continue
+                self.ssh.exec_assert(f"mkdir -p '{path}'", timeout=10)
+                self.ssh.exec_assert(f"chown root:'{group}' '{path}'", timeout=10)
+                self.ssh.exec_assert(f"chmod {perms} '{path}'", timeout=10)
+                self.ssh.exec_assert(f"chmod g+s '{path}'", timeout=10)
+                sf_uuid = str(__import__("uuid").uuid4())
+                smb_uuid = str(__import__("uuid").uuid4())
+                script = (
+                    "import xml.etree.ElementTree as ET\n"
+                    "ET.register_namespace('', '')\n"
+                    "t=ET.parse('/etc/openmediavault/config.xml')\n"
+                    "r=t.getroot()\n"
+                    "p=r.find('.//system/shares')\n"
+                    "if p is None:\n"
+                    "    sn=r.find('.//system')\n"
+                    "    if sn is None:\n"
+                    "        raise Exception('no system node')\n"
+                    "    p=ET.SubElement(sn,'shares')\n"
+                    "nf=ET.SubElement(p,'sharedfolder')\n"
+                    f"ET.SubElement(nf,'uuid').text='{sf_uuid}'\n"
+                    f"ET.SubElement(nf,'name').text='{name}'\n"
+                    f"ET.SubElement(nf,'comment').text='{comment}'\n"
+                    f"ET.SubElement(nf,'mntentref').text='{disk["uuid"]}'\n"
+                    f"ET.SubElement(nf,'reldirpath').text='{name}/'\n"
+                    "# SMB share\n"
+                    "smb=r.find('.//services/smb')\n"
+                    "if smb is None:\n"
+                    "    svc=r.find('.//services')\n"
+                    "    if svc is None:\n"
+                    "        raise Exception('no services node')\n"
+                    "    smb=ET.SubElement(svc,'smb')\n"
+                    "sh=smb.find('shares')\n"
+                    "if sh is None:\n"
+                    "    sh=ET.SubElement(smb,'shares')\n"
+                    "ns=ET.SubElement(sh,'share')\n"
+                    f"ET.SubElement(ns,'uuid').text='{smb_uuid}'\n"
+                    "ET.SubElement(ns,'enable').text='1'\n"
+                    f"ET.SubElement(ns,'sharedfolderref').text='{sf_uuid}'\n"
+                    f"ET.SubElement(ns,'comment').text='{name}'\n"
+                    "ET.SubElement(ns,'guest').text='no'\n"
+                    "ET.SubElement(ns,'readonly').text='0'\n"
+                    "ET.SubElement(ns,'browseable').text='true'\n"
+                    "ET.SubElement(ns,'recyclebin').text='0'\n"
+                    "ET.SubElement(ns,'recyclemaxsize').text='0'\n"
+                    "ET.SubElement(ns,'recyclemaxage').text='0'\n"
+                    "ET.SubElement(ns,'hidedotfiles').text='1'\n"
+                    "ET.SubElement(ns,'inheritacls').text='false'\n"
+                    "ET.SubElement(ns,'inheritpermissions').text='false'\n"
+                    "ET.SubElement(ns,'easupport').text='1'\n"
+                    "ET.SubElement(ns,'storedosattributes').text='0'\n"
+                    "ET.SubElement(ns,'hostsallow').text=''\n"
+                    "ET.SubElement(ns,'hostsdeny').text=''\n"
+                    "ET.SubElement(ns,'audit').text='0'\n"
+                    "ET.SubElement(ns,'timemachine').text='0'\n"
+                    "ET.SubElement(ns,'timemachinemaxsize').text=''\n"
+                    "ET.SubElement(ns,'transportencryption').text='0'\n"
+                    "ET.SubElement(ns,'followsymlinks').text='1'\n"
+                    "ET.SubElement(ns,'widelinks').text='0'\n"
+                    "ET.SubElement(ns,'extraoptions').text=''\n"
+                    "t.write('/etc/openmediavault/config.xml',"
+                    "encoding='UTF-8',xml_declaration=True)\n"
+                )
+                self.ssh.exec_python(script)
+                L(f"  Pasta '{name}' criada com SMB", GREEN)
+                ok += 1
+                smb_needed = True
+
+            if smb_needed:
+                L("Aplicando configuração SMB via omv-salt...", CYAN)
+                code, out, err = self.ssh.exec("omv-salt deploy run samba 2>&1", timeout=120)
+                if code != 0:
+                    L(f"omv-salt retornou {code}: {err[:200] if err else ''}", YELLOW)
+                self.ssh.exec("systemctl restart smbd nmbd 2>/dev/null || true", timeout=15)
+
+            L(f"{ok} pasta(s) processadas", GREEN if ok else YELLOW)
+            L("Importação concluída! Recarregando dados...", GREEN)
+            self._ssh_load_groups_list()
+            self._ssh_load_groups_full()
+            self._ssh_load_users()
+            self._ssh_load_folders()
+        except Exception as e:
+            self.log_queue.put(("error", str(e)))
+        finally:
+            self.log_queue.put(("done", None))
 
     # ===================================================================
     # RUN

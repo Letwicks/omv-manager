@@ -1,0 +1,54 @@
+<div id="list-page">
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="text-light mb-0">Pastas</h4>
+  <button class="btn btn-omv"
+          hx-get="{{ url_for('pasta_novo_form') }}"
+          hx-target="#modal-container" hx-swap="innerHTML">
+    + Adicionar
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="ps-3">Pasta</th>
+          <th>Disco</th>
+          <th>Grupo</th>
+          <th>Perm</th>
+          <th class="text-end pe-3">A&ccedil;&otilde;es</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in folders %}
+        <tr>
+          <td class="ps-3">{{ f.name }}</td>
+          <td><small class="text-secondary">{{ f.disk.rsplit('/', 1)[-1] or f.disk }}</small></td>
+          <td><span class="badge badge-omv">{{ f.group }}</span></td>
+          <td><small class="text-secondary">{{ f.permissions }}</small></td>
+          <td class="text-end pe-3">
+            <button class="btn btn-sm btn-omv me-1 edit-btn"
+                    hx-get="{{ url_for('pasta_editar_form', name=f.name) }}"
+                    hx-target="#modal-container" hx-swap="innerHTML">
+              Editar
+            </button>
+            <button class="btn btn-sm btn-outline-danger"
+                    hx-post="{{ url_for('pasta_apagar', name=f.name) }}"
+                    hx-target="#toast-area" hx-swap="innerHTML"
+                    hx-confirm="Apagar pasta '{{ f.name }}' e seu compartilhamento SMB?">
+              Apagar
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not folders %}
+        <tr><td colspan="5" class="text-center text-secondary py-4">Nenhuma pasta encontrada</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="modal-container"></div>
+</div>

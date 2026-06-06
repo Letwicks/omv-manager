@@ -1,0 +1,52 @@
+<div id="list-page">
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="text-light mb-0">Grupos</h4>
+  <button class="btn btn-omv"
+          hx-get="{{ url_for('grupo_novo_form') }}"
+          hx-target="#modal-container" hx-swap="innerHTML">
+    + Adicionar
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="ps-3">Grupo</th>
+          <th>Coment&aacute;rio</th>
+          <th>Membros</th>
+          <th class="text-end pe-3">A&ccedil;&otilde;es</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in groups %}
+        <tr>
+          <td class="ps-3 fw-medium">{{ g.name }}</td>
+          <td><small class="text-secondary">{{ g.comment|truncate(40) }}</small></td>
+          <td><small class="text-secondary">{{ g.members|join(', ')|truncate(40) }}</small></td>
+          <td class="text-end pe-3">
+            <button class="btn btn-sm btn-omv me-1 edit-btn"
+                    hx-get="{{ url_for('grupo_editar_form', name=g.name) }}"
+                    hx-target="#modal-container" hx-swap="innerHTML">
+              Editar
+            </button>
+            <button class="btn btn-sm btn-outline-danger"
+                    hx-post="{{ url_for('grupo_apagar', name=g.name) }}"
+                    hx-target="#toast-area" hx-swap="innerHTML"
+                    hx-confirm="Apagar grupo '{{ g.name }}'?">
+              Apagar
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not groups %}
+        <tr><td colspan="4" class="text-center text-secondary py-4">Nenhum grupo encontrado</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="modal-container"></div>
+</div>

@@ -1,0 +1,14 @@
+[Unit]
+Description=OMV Manager Web
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/gunicorn -w 2 -b 0.0.0.0:8080 app:app
+WorkingDirectory=/opt/omv-manager-web
+Environment=OMV_WEB_PASS=omvadmin
+Environment=OMV_WEB_SECRET=change_this_random_secret
+User=root
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

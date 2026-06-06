@@ -1,0 +1,67 @@
+<div class="modal fade" id="genericModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form hx-post="{% if not share %}{{ url_for('smb_novo') }}{% else %}{{ url_for('smb_editar', uuid=share.uuid) }}{% endif %}"
+            hx-target="#toast-area" hx-swap="innerHTML"
+            hx-trigger="submit" hx-indicator="#form-spin">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ 'Editar' if share else 'Adicionar' }} Compartilhamento SMB</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          {% if not share %}
+          <div class="mb-3">
+            <label class="form-label">Pasta</label>
+            <select name="folder" class="form-select" required>
+              <option value="">Selecione...</option>
+              {% for f in folders %}
+              <option value="{{ f }}">{{ f }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% else %}
+          <div class="mb-3">
+            <label class="form-label">Pasta</label>
+            <input type="text" class="form-control" value="{{ share.folder }}" readonly>
+          </div>
+          {% endif %}
+
+          <div class="mb-3">
+            <label class="form-label">Coment&aacute;rio</label>
+            <input type="text" name="comment" class="form-control"
+                   value="{{ share.comment if share else '' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Acesso convidado</label>
+            <select name="guest" class="form-select">
+              <option value="no" {{ 'selected' if share and share.guest=='no' else '' }}>N&atilde;o permitir</option>
+              <option value="allow" {{ 'selected' if share and share.guest=='allow' else '' }}>Permitir</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Naveg&aacute;vel na rede</label>
+            <select name="browseable" class="form-select">
+              <option value="true" {{ 'selected' if not share or share.browseable=='true' else '' }}>Sim</option>
+              <option value="false" {{ 'selected' if share and share.browseable=='false' else '' }}>N&atilde;o</option>
+            </select>
+          </div>
+          {% if share %}
+          <div class="mb-3">
+            <label class="form-label">Somente leitura</label>
+            <select name="readonly" class="form-select">
+              <option value="0" {{ 'selected' if share.readonly=='0' else '' }}>N&atilde;o</option>
+              <option value="1" {{ 'selected' if share.readonly=='1' else '' }}>Sim</option>
+            </select>
+          </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            Salvar <span id="form-spin" class="spinner-border spinner-border-sm htmx-indicator"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

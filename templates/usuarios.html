@@ -1,0 +1,54 @@
+<div id="list-page">
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="text-light mb-0">Usu&aacute;rios</h4>
+  <button class="btn btn-omv"
+          hx-get="{{ url_for('usuario_novo_form') }}"
+          hx-target="#modal-container" hx-swap="innerHTML"
+          hx-trigger="click">
+    + Adicionar
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="ps-3">Usu&aacute;rio</th>
+          <th>Grupo prim&aacute;rio</th>
+          <th>Grupos</th>
+          <th class="text-end pe-3">A&ccedil;&otilde;es</th>
+        </tr>
+      </thead>
+      <tbody id="user-table-body">
+        {% for u in users %}
+        <tr>
+          <td class="ps-3">{{ u.username }}</td>
+          <td><span class="badge badge-omv">{{ u.primary_group }}</span></td>
+          <td><small class="text-secondary">{{ u.groups|truncate(50) }}</small></td>
+          <td class="text-end pe-3">
+            <button class="btn btn-sm btn-omv me-1 edit-btn"
+                    hx-get="{{ url_for('usuario_editar_form', username=u.username) }}"
+                    hx-target="#modal-container" hx-swap="innerHTML">
+              Editar
+            </button>
+            <button class="btn btn-sm btn-outline-danger"
+                    hx-post="{{ url_for('usuario_apagar', username=u.username) }}"
+                    hx-target="#toast-area" hx-swap="innerHTML"
+                    hx-confirm="Apagar usu&aacute;rio '{{ u.username }}'?">
+              Apagar
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not users %}
+        <tr><td colspan="4" class="text-center text-secondary py-4">Nenhum usu&aacute;rio encontrado</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Generic modal for HTMX forms -->
+<div id="modal-container"></div>
+</div>

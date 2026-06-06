@@ -1,0 +1,87 @@
+<div class="modal fade" id="genericModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form hx-post="{% if not folder %}{{ url_for('pasta_novo') }}{% else %}{{ url_for('pasta_editar', name=folder.name) }}{% endif %}"
+            hx-target="#toast-area" hx-swap="innerHTML"
+            hx-trigger="submit" hx-indicator="#form-spin">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ 'Editar' if folder else 'Adicionar' }} Pasta</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          {% if not folder %}
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" name="name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Disco</label>
+            <select name="disk_uuid" class="form-select" required>
+              <option value="">Selecione...</option>
+              {% for d in disks %}
+              <option value="{{ d.uuid }}">{{ d.dev }} ({{ d.fstype }}) {{ d.size }} disp:{{ d.avail }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% else %}
+          <input type="hidden" name="name" value="{{ folder.name }}">
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" class="form-control" value="{{ folder.name }}" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Caminho</label>
+            <input type="text" class="form-control" value="{{ folder.path }}" readonly>
+          </div>
+          {% endif %}
+
+          <div class="mb-3">
+            <label class="form-label">Grupo</label>
+            <select name="group" class="form-select">
+              {% for g in all_groups %}
+              <option value="{{ g }}" {{ 'selected' if folder and g==folder.group else '' }}>{{ g }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Permiss&atilde;o</label>
+            {% for val, desc in presets.items() %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="permissions"
+                     value="{{ val }}" id="perm-{{ val }}"
+                     {{ 'checked' if (folder and folder.permissions==val) or (not folder and val=='770') else '' }}>
+              <label class="form-check-label text-secondary" for="perm-{{ val }}">
+                <code>{{ val }}</code> &mdash; {{ desc }}
+              </label>
+            </div>
+            {% endfor %}
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="radio" name="permissions"
+                     value="" id="perm-custom"
+                     {{ 'checked' if folder and folder.permissions not in presets else '' }}>
+              <label class="form-check-label text-secondary" for="perm-custom">
+                Personalizado:
+              </label>
+              <input type="text" name="permissions_custom" class="form-control form-control-sm d-inline-block ms-2"
+                     style="width:90px" placeholder="ex: 770"
+                     value="{{ folder.permissions if folder and folder.permissions not in presets else '' }}">
+            </div>
+          </div>
+
+          {% if not folder %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="create_smb" id="chk-smb" checked>
+            <label class="form-check-label" for="chk-smb">Criar compartilhamento SMB</label>
+          </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            Salvar <span id="form-spin" class="spinner-border spinner-border-sm htmx-indicator"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

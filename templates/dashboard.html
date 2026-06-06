@@ -1,0 +1,80 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="text-light mb-0">Dashboard</h4>
+  <small class="text-secondary">recarregue a p&aacute;gina para atualizar</small>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-secondary">Servidor</h6>
+        <h5 class="text-light">{{ info.hostname or '--' }}</h5>
+        <small class="text-secondary">{{ info.os or '--' }}</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-secondary">Ativo h&aacute;</h6>
+        <h5 class="text-light">{{ info.uptime or '--' }}</h5>
+        <small class="text-secondary">Load: {{ info.load or '--' }}</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-secondary">OpenMediaVault</h6>
+        <h5 class="text-light">{{ info.omv or '--' }}</h5>
+        <small class="text-secondary">v{{ info.omv }}</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <h2 class="text-info mb-0">{{ info.users or 0 }}</h2>
+        <small class="text-secondary">usu&aacute;rios</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <h2 class="text-success mb-0">{{ info.groups or 0 }}</h2>
+        <small class="text-secondary">grupos OMV</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <h2 class="text-warning mb-0">{{ info.folders or 0 }}</h2>
+        <small class="text-secondary">pastas compartilhadas</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mt-2">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-secondary">Mem&oacute;ria</h6>
+        <h5 class="text-light">{{ info.mem or '--' }}</h5>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-secondary">Disco (/)</h6>
+        <h5 class="text-light">{{ info.disk or '--' }}</h5>
+      </div>
+    </div>
+  </div>
+</div>

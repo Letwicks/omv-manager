@@ -1,0 +1,72 @@
+<div id="list-page">
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="text-light mb-0">Compartilhamentos SMB</h4>
+  <button class="btn btn-omv"
+          hx-get="{{ url_for('smb_novo_form') }}"
+          hx-target="#modal-container" hx-swap="innerHTML">
+    + Adicionar
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="ps-3">Pasta</th>
+          <th>Coment&aacute;rio</th>
+          <th>Convidado</th>
+          <th>Naveg&aacute;vel</th>
+          <th>Status</th>
+          <th class="text-end pe-3">A&ccedil;&otilde;es</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in shares %}
+        <tr>
+          <td class="ps-3 fw-medium">{{ s.folder }}</td>
+          <td><small class="text-secondary">{{ s.comment|truncate(40) }}</small></td>
+          <td>
+            <span class="badge {% if s.guest=='allow' %}bg-warning{% else %}bg-secondary{% endif %}">
+              {{ s.guest }}
+            </span>
+          </td>
+          <td><small class="text-secondary">{{ s.browseable }}</small></td>
+          <td>
+            {% if s.enable == '1' %}
+              <span class="badge bg-success">Ativo</span>
+            {% else %}
+              <span class="badge bg-danger">Inativo</span>
+            {% endif %}
+          </td>
+          <td class="text-end pe-3">
+            <button class="btn btn-sm btn-omv me-1 edit-btn"
+                    hx-get="{{ url_for('smb_editar_form', uuid=s.uuid) }}"
+                    hx-target="#modal-container" hx-swap="innerHTML">
+              Editar
+            </button>
+            <button class="btn btn-sm {% if s.enable=='1' %}btn-outline-warning{% else %}btn-outline-success{% endif %} me-1"
+                    hx-post="{{ url_for('smb_toggle', uuid=s.uuid) }}"
+                    hx-target="#toast-area" hx-swap="innerHTML"
+                    hx-confirm="{{ 'Desativar' if s.enable=='1' else 'Ativar' }} compartilhamento '{{ s.folder }}'?">
+              {{ 'Desativar' if s.enable=='1' else 'Ativar' }}
+            </button>
+            <button class="btn btn-sm btn-outline-danger"
+                    hx-post="{{ url_for('smb_apagar', uuid=s.uuid) }}"
+                    hx-target="#toast-area" hx-swap="innerHTML"
+                    hx-confirm="Remover compartilhamento SMB '{{ s.folder }}'?">
+              Apagar
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not shares %}
+        <tr><td colspan="6" class="text-center text-secondary py-4">Nenhum compartilhamento SMB</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="modal-container"></div>
+</div>

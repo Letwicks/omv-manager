@@ -1,0 +1,49 @@
+<div id="list-page">
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="text-light mb-0">ACLs</h4>
+  <button class="btn btn-omv"
+          hx-get="{{ url_for('acl_novo_form') }}"
+          hx-target="#modal-container" hx-swap="innerHTML">
+    + Adicionar
+  </button>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="ps-3">Pasta</th>
+          <th>Alvo</th>
+          <th>Tipo</th>
+          <th>Permiss&atilde;o</th>
+          <th class="text-end pe-3">A&ccedil;&atilde;o</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in acls %}
+        <tr>
+          <td class="ps-3">{{ a.folder }}</td>
+          <td>{{ a.name }}</td>
+          <td><span class="badge {% if a.type=='user' %}bg-info{% else %}bg-success{% endif %}">{{ a.type }}</span></td>
+          <td><code>{{ a.perms }}</code></td>
+          <td class="text-end pe-3">
+            <button class="btn btn-sm btn-outline-danger"
+                    hx-post="{{ url_for('acl_apagar', uuid=a.uuid) }}"
+                    hx-target="#toast-area" hx-swap="innerHTML"
+                    hx-confirm="Remover ACL de '{{ a.name }}' na pasta '{{ a.folder }}'?">
+              Apagar
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not acls %}
+        <tr><td colspan="5" class="text-center text-secondary py-4">Nenhuma ACL configurada</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="modal-container"></div>
+</div>

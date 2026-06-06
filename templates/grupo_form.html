@@ -1,0 +1,43 @@
+<div class="modal fade" id="genericModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form hx-post="{% if not group %}{{ url_for('grupo_novo') }}{% else %}{{ url_for('grupo_editar', name=group.name) }}{% endif %}"
+            hx-target="#toast-area" hx-swap="innerHTML"
+            hx-trigger="submit" hx-indicator="#form-spin">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ 'Editar' if group else 'Adicionar' }} Grupo</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ group.name if group else '' }}"
+                   {{ 'readonly' if group else '' }} required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Coment&aacute;rio</label>
+            <input type="text" name="comment" class="form-control"
+                   value="{{ group.comment if group else '' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Membros</label>
+            <select name="members" class="form-select" multiple size="8">
+              {% for u in users %}
+              <option value="{{ u }}"
+                {{-' selected' if group and u in group.members else '' }}>{{ u }}</option>
+              {% endfor %}
+            </select>
+            <small class="text-secondary">Ctrl+clique para m&uacute;ltiplos</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            Salvar <span id="form-spin" class="spinner-border spinner-border-sm htmx-indicator"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

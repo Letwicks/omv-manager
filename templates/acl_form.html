@@ -1,0 +1,55 @@
+<div class="modal fade" id="genericModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form hx-post="{{ url_for('acl_novo') }}"
+            hx-target="#toast-area" hx-swap="innerHTML"
+            hx-trigger="submit" hx-indicator="#form-spin">
+        <div class="modal-header">
+          <h5 class="modal-title">Adicionar ACL</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Pasta</label>
+            <select name="folder" class="form-select" required>
+              <option value="">Selecione...</option>
+              {% for f in folders %}
+              <option value="{{ f }}">{{ f }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tipo</label>
+            <select name="type" class="form-select">
+              <option value="user">Usu&aacute;rio</option>
+              <option value="group">Grupo</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Alvo (usu&aacute;rio ou grupo)</label>
+            <input type="text" name="name" class="form-control" list="alvos-list" required>
+            <datalist id="alvos-list">
+              {% for u in users %}<option value="{{ u }}">{% endfor %}
+              {% for g in groups %}<option value="{{ g }}">{% endfor %}
+            </datalist>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Permiss&atilde;o</label>
+            <select name="perms" class="form-select">
+              <option value="rwx">rwx (leitura, escrita, execu&ccedil;&atilde;o)</option>
+              <option value="rx">rx (leitura, execu&ccedil;&atilde;o)</option>
+              <option value="r">r (somente leitura)</option>
+              <option value="rw">rw (leitura, escrita)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            Salvar <span id="form-spin" class="spinner-border spinner-border-sm htmx-indicator"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
